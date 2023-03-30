@@ -11,16 +11,24 @@ type Repository struct {
 	DB *gorm.DB
 }
 
+var (
+	table = "products"
+)
+
 func NewStockRepository(db *gorm.DB) *Repository {
-	return &Repository{}
+	return &Repository{
+		DB: db,
+	}
 }
 
-func (r *Repository) CreateStockProduct(e echo.Context) (product *model.ProductResponse, err error) {
-	requestBody := &model.ProductDTO{}
-	if err := e.Bind(&requestBody); err != nil {
+func (r *Repository) CreateStockProduct(e echo.Context) (*model.ProductResponse, error) {
+	requestBody := new(model.ProductDTO)
+	if err := e.Bind(requestBody); err != nil {
 		return nil, err
 	}
-	r.DB.Create(requestBody)
+	if err := r.DB.Table(table).Create(requestBody).Error; err != nil {
+		return nil, err
+	}
 	return model.ProductDTOToProductResponse(requestBody), nil
 }
 func (r *Repository) UpdateStockProduct(e echo.Context) (product *model.ProductResponse, err error) {
@@ -35,19 +43,19 @@ func (r *Repository) UpdateStockProduct(e echo.Context) (product *model.ProductR
 	temporaryProduct.Name = newProduct.Name
 	temporaryProduct.UnitPrice = newProduct.UnitPrice
 	temporaryProduct.StockAmount = newProduct.StockAmount
-	r.DB.Table("Products").Where("id = ?", id).First(&newProduct)
+	r.DB.Table(table).Where("id = ?", id).First(&newProduct)
 	newProduct.ID = temporaryProduct.ID
 	newProduct.Category = temporaryProduct.Category
 	newProduct.Feature = temporaryProduct.Feature
 	newProduct.Name = temporaryProduct.Name
 	newProduct.UnitPrice = temporaryProduct.UnitPrice
 	newProduct.StockAmount = temporaryProduct.StockAmount
-	r.DB.Table("Products").Where("id = ?", id).Save(newProduct)
+	r.DB.Table(table).Where("id = ?", id).Save(newProduct)
 	return model.ProductDTOToProductResponse(newProduct), nil
 }
 func (r *Repository) DeleteStockProduct(e echo.Context) (product *model.Product, err error) {
 	id := e.Param("id")
-	result := r.DB.Delete(&product, id)
+	result := r.DB.Table(table).Delete(&product, id)
 	if result.Error != nil {
 
 		if result.Error == gorm.ErrRecordNotFound {
@@ -64,7 +72,7 @@ func (r *Repository) FilterSearchStockProduct(e echo.Context) ([]*model.Product,
 	minPrice := e.QueryParam("min_price")
 	maxPrice := e.QueryParam("max_price")
 	var products []*model.Product
-	db := r.DB.Model(&model.Product{})
+	db := r.DB.Table(table).Model(&model.Product{})
 	if query != "" {
 		db = db.Where("name LIKE ?", "%"+query+"%")
 	}
@@ -77,14 +85,14 @@ func (r *Repository) FilterSearchStockProduct(e echo.Context) ([]*model.Product,
 	if maxPrice != "" {
 		db = db.Where("unit_price <= ?", maxPrice)
 	}
-	result := db.Find(&products)
+	result := db.Table(table).Find(&products)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return products, nil
 }
 func (r *Repository) GetAllStockProducts(e echo.Context) (products []*model.Product, err error) {
-	result := r.DB.Find(&products)
+	result := r.DB.Table(table).Find(&products)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -93,7 +101,7 @@ func (r *Repository) GetAllStockProducts(e echo.Context) (products []*model.Prod
 func (r *Repository) GetStockProductById(e echo.Context) (productDTO *model.ProductDTO, err error) {
 	id := e.Param("id")
 	var product model.Product
-	result := r.DB.Table("Products").Where("id = ?", id).Find(&product)
+	result := r.DB.Table(table).Where("id = ?", id).Find(&product)
 	if result.Error != nil {
 		return nil, result.Error
 	}
