@@ -4,74 +4,103 @@ import (
 	"gorm.io/gorm"
 )
 
-type Categories struct {
-	Categories []string `json:"categories" gorm:"type:text;"`
-}
+// Product represents a stock item
 type Product struct {
 	gorm.Model
-	Name        string   `json:"name"`
-	UnitPrice   string   `json:"unitPrice"`
-	StockAmount string   `json:"stockAmount"`
-	Feature     string   `json:"feature"`
-	Category    []string `json:"category" gorm:"type:text;"`
+	Name        string            `gorm:"not null" json:"name"`
+	Description string            `json:"description"`
+	Price       float64           `gorm:"not null" json:"price"`
+	Quantity    int               `gorm:"not null" json:"quantity"`
+	CategoryID  uint              `gorm:"index"`
+	Category    Category          `json:"category" gorm:"foreignkey:CategoryID"`
+	Properties  []ProductProperty `json:"properties"`
 }
 
-type ProductDTO struct {
-	ID          uint     `gorm:"primaryKey,omitempty"`
-	Name        string   `json:"name"`
-	UnitPrice   string   `json:"unitPrice"`
-	StockAmount string   `json:"stockAmount"`
-	Feature     string   `json:"feature"`
-	Category    []string `json:"category" gorm:"type:text;"`
+// Category represents a stock category
+type Category struct {
+	gorm.Model
+	Name        string    `gorm:"not null" json:"name"`
+	Description string    `json:"description"`
+	Products    []Product `json:"products"`
 }
+type ProductCategory struct {
+	gorm.Model
+	ProductID  uint `json:"productID"`
+	CategoryID uint `json:"categoryID"`
+}
+
+// ProductProperty represents a product property
+type ProductProperty struct {
+	gorm.Model
+	Name      string  `gorm:"not null" json:"name"`
+	Value     string  `json:"value"`
+	ProductID uint    `gorm:"index"`
+	Product   Product `json:"product" gorm:"foreignkey:ProductID"`
+}
+
+// Invoice represents a product invoice
+type Invoice struct {
+	gorm.Model
+	InvoiceNo  string  `gorm:"not null" json:"invoice_no"`
+	ProductID  uint    `gorm:"index"`
+	Product    Product `json:"product" gorm:"foreignkey:ProductID"`
+	Quantity   int     `gorm:"not null" json:"quantity"`
+	TotalPrice float64 `gorm:"not null" json:"total_price"`
+}
+
+// ProductDTO represents a product data transfer object
+type ProductDTO struct {
+	ID          uint
+	Name        string   `json:"name"`
+	Price       float64  `json:"price"`
+	Quantity    int      `json:"quantity"`
+	Description string   `json:"description"`
+	CategoryID  uint     `gorm:"index"`
+	Category    Category `json:"category" gorm:"foreignkey:CategoryID"`
+}
+
+// ProductResponse represents a product response object
 type ProductResponse struct {
 	Message    string      `json:"message"`
 	ProductDTO *ProductDTO `json:"product"`
 }
-type DeletedProduct struct {
-	gorm.Model
-	Name        string `json:"name"`
-	UnitPrice   string `json:"unitPrice"`
-	StockAmount string `json:"stockAmount"`
-	Feature     string `json:"feature"`
-}
 
-func ProductToProductDTO(product *Product) *ProductDTO {
+// ToDTO converts a product to a product DTO
+func ToDTO(p *Product) *ProductDTO {
 	return &ProductDTO{
-
-		Name:        product.Name,
-		UnitPrice:   product.UnitPrice,
-		StockAmount: product.StockAmount,
-		Feature:     product.Feature,
-		Category:    product.Category,
+		ID:          p.ID,
+		Name:        p.Name,
+		Price:       p.Price,
+		Quantity:    p.Quantity,
+		Description: p.Description,
+		CategoryID:  p.CategoryID,
 	}
 }
-func ProductDTOToProduct(product *Product) *Product {
+
+// Creates a product response object from a product
+func CreateProductResponse(p *Product) *ProductResponse {
+	return &ProductResponse{
+		Message:    "Success",
+		ProductDTO: ToDTO(p),
+	}
+}
+
+// Creates a product response object from a product DTO
+func CreateProductResponseFromDTO(p *ProductDTO) *ProductResponse {
+	return &ProductResponse{
+		Message:    "Success",
+		ProductDTO: p,
+	}
+}
+
+// ToProduct converts a product DTO to a product
+func ToProduct(p *ProductDTO) *Product {
 	return &Product{
 		Model:       gorm.Model{},
-		Name:        product.Name,
-		UnitPrice:   product.UnitPrice,
-		StockAmount: product.StockAmount,
-		Feature:     product.Feature,
-		Category:    product.Category,
-	}
-}
-func ProductToProductResponse(product *Product) *ProductResponse {
-	productDTO := &ProductDTO{
-		Name:        product.Name,
-		UnitPrice:   product.UnitPrice,
-		StockAmount: product.StockAmount,
-		Feature:     product.Feature,
-		Category:    product.Category,
-	}
-	return &ProductResponse{
-		Message:    "Başarılı",
-		ProductDTO: productDTO,
-	}
-}
-func ProductDTOToProductResponse(productDTO *ProductDTO) *ProductResponse {
-	return &ProductResponse{
-		Message:    "Başarılı",
-		ProductDTO: productDTO,
+		Name:        p.Name,
+		Price:       p.Price,
+		Quantity:    p.Quantity,
+		Description: p.Description,
+		CategoryID:  p.CategoryID,
 	}
 }

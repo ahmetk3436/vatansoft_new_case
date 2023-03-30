@@ -13,7 +13,7 @@ type StockHandler struct {
 
 func NewStockHandler() *StockHandler {
 	dbInstance := db.GetDB()
-	stockrepository := repository.NewStockRepository(dbInstance)
+	stockrepository := repository.NewProductRepository(dbInstance)
 	stockservice := service.NewStockService(stockrepository)
 	stockApi := api.NewStockApi(stockservice)
 	return &StockHandler{

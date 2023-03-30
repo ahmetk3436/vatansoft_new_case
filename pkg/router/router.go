@@ -20,8 +20,8 @@ func (r *Router) InitRouter() *echo.Echo {
 	e := echo.New()
 	e.GET("/stocks", r.StockHandler.Api.GetAllProductApi)
 	e.GET("/stocks/filter", r.StockHandler.Api.FilterSearchStockProductApi)
-	e.PUT("/stock/insert", r.StockHandler.Api.CreateStockProductApi)
-	e.POST("/stock/:id/update", r.StockHandler.Api.UpdateStockProductApi)
+	e.POST("/stock/insert", r.StockHandler.Api.CreateStockProductApi)
+	e.PUT("/stock/:id/update", r.StockHandler.Api.UpdateStockProductApi)
 	e.DELETE("/stock/:id/delete", r.StockHandler.Api.DeleteStockProductApi)
 	e.GET("/stock/:id", r.StockHandler.Api.GetStockProductByIdApi)
 
