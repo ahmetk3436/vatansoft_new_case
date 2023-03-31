@@ -1,0 +1,112 @@
+version: '3.9'
+
+services:
+  jenkins:
+    container_name: jenkins
+    image : jenkins/jenkins
+    restart: on-failure
+    ports:
+      - 8080:8080
+      - 50000:50000
+  redis:
+    container_name: redis
+    image: redis:latest
+    command: ["redis-server", "--requirepass", "toor", "--appendonly", "yes"]
+    networks:
+      - mongors-network
+    ports:
+     - 6379:6379
+    restart: on-failure
+  goapp:
+    build: .
+    container_name: goapp
+    networks:
+      - mongors-network
+    environment:
+      - MONGO_HOST=mongo1
+      - MONGO_DB=logdb    
+    restart: on-failure
+    depends_on:
+      - mongo1
+      - mysql
+      - redis
+  mysql:
+    image: mysql:latest
+    ports:
+      - 3306:3306
+      - 33060:33060
+    container_name: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: 'db'
+      # So you don't have to use root, but you can if you like
+      MYSQL_USER: 'user'
+      # You can use whatever password you like
+      MYSQL_PASSWORD: 'toor'
+      # Password for root access
+      MYSQL_ROOT_PASSWORD: 'toor'  
+    networks:
+      - mongors-network
+    volumes:
+      - my-db:/var/lib/mysql
+    restart: on-failure       
+  mongo1:
+    container_name: mongo1
+    image: mongo:4.4
+    volumes:
+      - ~/mongors/data1:/data/db
+      - ./rs-init.sh:/scripts/rs-init.sh
+    networks:
+      - mongors-network
+    ports:
+      - 27021:27017
+    links:
+      - mongo2
+      - mongo3
+    restart: always
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "dbrs" ]
+  mongo2:
+    container_name: mongo2
+    image: mongo:4.4
+    volumes:
+      - ~/mongors/data2:/data/db
+    networks:
+      - mongors-network
+    ports:
+      - 27022:27017
+    restart: always
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "dbrs" ]
+  mongo3:
+    container_name: mongo3
+    image: mongo:4.4
+    volumes:
+      - ~/mongors/data3:/data/db
+    networks:
+      - mongors-network
+    ports:
+      - 27023:27017
+    restart: always
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "dbrs" ]
+
+  init-mongo:
+    container_name: init-mongo
+    image: mongo:4.4
+    volumes:
+      - ./rs-init.sh:/docker-entrypoint-initdb.d/rs-init.sh
+    networks:
+      - mongors-network
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    environment:
+      MONGO_INITDB_DATABASE: admin
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    restart: on-failure
+
+networks:
+  mongors-network:
+    driver: bridge  
+volumes:
+  my-db:    
