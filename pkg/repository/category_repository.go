@@ -2,6 +2,7 @@ package repository
 
 import (
 	"strconv"
+	"vatansoft/internal/storage"
 	"vatansoft/pkg/model"
 
 	"github.com/labstack/echo/v4"
@@ -9,19 +10,21 @@ import (
 )
 
 type CategoryRepository struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Redis *storage.RedisClient
 }
 
 var (
 	categoryTable = "categories"
 )
 
-func NewCategoryRepository(db *gorm.DB) *ProductRepository {
-	return &ProductRepository{
-		DB: db,
+func NewCategoryRepository(db *gorm.DB, redis *storage.RedisClient) *CategoryRepository {
+	return &CategoryRepository{
+		DB:    db,
+		Redis: redis,
 	}
 }
-func (r *ProductRepository) CreateCategory(c echo.Context, category *model.Category) (*model.Category, error) {
+func (r *CategoryRepository) CreateCategory(c echo.Context, category *model.Category) (*model.Category, error) {
 	if category.Description == "" || category.Name == "" {
 		return nil, echo.ErrBadRequest
 	}
@@ -33,10 +36,10 @@ func (r *ProductRepository) CreateCategory(c echo.Context, category *model.Categ
 	return category, nil
 }
 
-func (r *ProductRepository) UpdateCategory(c echo.Context, id string, newCategory *model.Category) (*model.Category, error) {
+func (r *CategoryRepository) UpdateCategory(c echo.Context, id string, newCategory *model.Category) (*model.Category, error) {
 	// Create a temporary ProductDTO object to store the updated values
 	temporaryProduct := &model.Category{
-		Model:       newCategory.Model,
+		CategoryID:  newCategory.CategoryID,
 		Name:        newCategory.Name,
 		Description: newCategory.Description,
 	}
@@ -49,7 +52,7 @@ func (r *ProductRepository) UpdateCategory(c echo.Context, id string, newCategor
 	// Convert the updated product to a ProductResponse object and return it
 	return newCategory, nil
 }
-func (r *ProductRepository) DeleteCategory(c echo.Context, id string) (*model.Category, error) {
+func (r *CategoryRepository) DeleteCategory(c echo.Context, id string) (*model.Category, error) {
 	var category model.Category
 	result := r.DB.Table(categoryTable).Where("id = ?", id).Scan(&category).Delete(&category)
 	if result.Error != nil {
@@ -60,7 +63,7 @@ func (r *ProductRepository) DeleteCategory(c echo.Context, id string) (*model.Ca
 	}
 	return &category, nil
 }
-func (r *ProductRepository) GetAllCategories(c echo.Context) ([]*model.Category, error) {
+func (r *CategoryRepository) GetAllCategories(c echo.Context) ([]*model.Category, error) {
 	var categories []*model.Category
 	if err := r.DB.Unscoped().Table(categoryTable).Find(&categories).Error; err != nil {
 		return nil, err
@@ -68,12 +71,12 @@ func (r *ProductRepository) GetAllCategories(c echo.Context) ([]*model.Category,
 	return categories, nil
 }
 
-func (r *ProductRepository) GetCategoryById(c echo.Context, id string) (*model.Category, error) {
+func (r *CategoryRepository) GetCategoryById(c echo.Context, id string) (*model.Category, error) {
 	category := &model.Category{}
 	if err := r.DB.Table(categoryTable).Where("id = ?", id).First(category).Error; err != nil {
 		return nil, err
 	}
 	newId, _ := strconv.Atoi(id)
-	category.ID = uint(newId)
+	category.CategoryID = uint(newId)
 	return category, nil
 }

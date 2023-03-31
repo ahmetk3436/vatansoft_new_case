@@ -1,16 +1,15 @@
 package service
 
 import (
+	"errors"
 	"vatansoft/pkg/model"
 	"vatansoft/pkg/repository"
 
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
 )
 
 type StockService struct {
 	repository *repository.ProductRepository
-	DB         *gorm.DB
 }
 
 func NewStockService(repository *repository.ProductRepository) *StockService {
@@ -22,7 +21,7 @@ func NewStockService(repository *repository.ProductRepository) *StockService {
 func (s *StockService) CreateStockProductService(e echo.Context, dto *model.ProductDTO) (product *model.ProductResponse, err error) {
 	product, err = s.repository.CreateProduct(e, dto)
 	if err != nil {
-		return nil, echo.ErrBadGateway
+		return nil, errors.New(err.Error())
 	}
 	return product, nil
 }
@@ -51,16 +50,37 @@ func (s *StockService) FilterSearchStockProductService(e echo.Context, query, ca
 	return product, nil
 }
 
-func (s *StockService) GetAllStockProductsService(e echo.Context) (products []*model.ProductDTO, err error) {
+func (s *StockService) GetAllStockProductsService(e echo.Context) (products []*model.Product, err error) {
 	products, err = s.repository.GetAllProducts(e)
-	if err != nil {
-		return nil, echo.ErrBadGateway
+	if err != nil && len(products) == 0 {
+		return nil, errors.New("sistemde ürün bulunmamaktadır")
 	}
 	return products, nil
 }
 
 func (s *StockService) GetStockProductByIdService(e echo.Context, id string) (product *model.ProductDTO, err error) {
 	product, err = s.repository.GetProductById(e, id)
+	if err != nil {
+		return nil, echo.ErrBadGateway
+	}
+	return product, nil
+}
+func (s *StockService) InsertCategoryForAllProductService(e echo.Context, category model.Category) (products *[]model.Product, err error) {
+	products, err = s.repository.InsertCategoryForAllProduct(e, category)
+	if err != nil {
+		return nil, echo.ErrBadGateway
+	}
+	return products, nil
+}
+func (s *StockService) DeleteCategoryForProductByIdService(e echo.Context, id, categoryId string) (product *model.ProductDTO, err error) {
+	product, err = s.repository.DeleteCategoryForProductById(e, id, categoryId)
+	if err != nil {
+		return nil, echo.ErrBadGateway
+	}
+	return product, nil
+}
+func (s *StockService) DeleteCategoryForProductsByIdService(e echo.Context, id string) (product *model.ProductDTO, err error) {
+	product, err = s.repository.DeleteCategoryForProductsById(e, id)
 	if err != nil {
 		return nil, echo.ErrBadGateway
 	}

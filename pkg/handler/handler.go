@@ -1,22 +1,32 @@
 package handler
 
 import (
-	"vatansoft/internal/db"
+	"fmt"
+	"vatansoft/internal/storage"
 	"vatansoft/pkg/api"
 	"vatansoft/pkg/repository"
 	"vatansoft/pkg/service"
 )
 
-type StockHandler struct {
-	Api *api.Api
+type Handler struct {
+	Api         *api.Api
+	CategoryApi *api.CategoryApi
 }
 
-func NewStockHandler() *StockHandler {
-	dbInstance := db.GetDB()
-	stockrepository := repository.NewProductRepository(dbInstance)
+func NewStockHandler() *Handler {
+	dbInstance := storage.GetDB()
+	redisInstance, err := storage.NewRedisClient("45.12.81.218:6379", "toor")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	stockrepository := repository.NewProductRepository(dbInstance, redisInstance)
 	stockservice := service.NewStockService(stockrepository)
 	stockApi := api.NewStockApi(stockservice)
-	return &StockHandler{
-		Api: stockApi,
+	categoryRepository := repository.NewCategoryRepository(dbInstance, redisInstance)
+	categoryService := service.NewCategoryService(categoryRepository)
+	categoryApi := api.NewCategoryApi(categoryService)
+	return &Handler{
+		Api:         stockApi,
+		CategoryApi: categoryApi,
 	}
 }

@@ -7,33 +7,33 @@ import (
 )
 
 type Router struct {
-	StockHandler handler.StockHandler
+	Handler handler.Handler
 }
 
-func NewRouter(stockHandler handler.StockHandler) *Router {
+func NewRouter(handler handler.Handler) *Router {
 	return &Router{
-		StockHandler: stockHandler,
+		Handler: handler,
 	}
 }
 
 func (r *Router) InitRouter() *echo.Echo {
 	e := echo.New()
-	e.GET("/stocks", r.StockHandler.Api.GetAllProductApi)
-	e.GET("/stocks/filter", r.StockHandler.Api.FilterSearchStockProductApi)
-	e.POST("/stock/insert", r.StockHandler.Api.CreateStockProductApi)
-	e.PUT("/stock/:id/update", r.StockHandler.Api.UpdateStockProductApi)
-	e.DELETE("/stock/:id/delete", r.StockHandler.Api.DeleteStockProductApi)
-	e.GET("/stock/:id", r.StockHandler.Api.GetStockProductByIdApi)
+	e.GET("/stocks", r.Handler.Api.GetAllProductApi)
+	e.GET("/stocks/filter", r.Handler.Api.FilterSearchStockProductApi)
+	e.POST("/stock/insert", r.Handler.Api.CreateStockProductApi)
+	e.PUT("/stock/:id/update", r.Handler.Api.UpdateStockProductApi)
+	e.DELETE("/stock/:id/delete", r.Handler.Api.DeleteStockProductApi)
+	e.GET("/stock/:id", r.Handler.Api.GetStockProductByIdApi)
 
-	/*e.POST("/stock/category/insert", r.StockHandler.Api.CreateCategoryHandler)
-	e.DELETE("/stock/:id/category/:id/delete", r.StockHandler.Api.DeleteProductCategoryHandler)
-	e.DELETE("/stock/:id/category/delete", r.StockHandler.Api.DeleteAllProductCategoriesHandler)
+	e.POST("/stock/category/insert", r.Handler.Api.CreateStockProductApi)
+	e.DELETE("/stock/:id/category/:id/delete", r.Handler.Api.DeleteCategoryForProductByIdApi)
+	e.DELETE("/stock/:id/category/delete", r.Handler.Api.DeleteCategoryForProductsByIdApi)
 
-	e.GET("/categories", r.StockHandler.Api.GetAllCategoriesHandler)
-	e.GET("/category/:id", r.StockHandler.Api.GetCategoryHandler)
-	e.POST("/category/insert", r.StockHandler.Api.CreateCategoryHandler)
-	e.DELETE("/category/:id/delete", r.StockHandler.Api.DeleteCategoryHandler)
-	e.PUT("/category/:id/update", r.StockHandler.Api.UpdateCategoryHandler)*/
+	e.GET("/categories", r.Handler.CategoryApi.GetAllCategoriesApi)
+	e.GET("/category/:id", r.Handler.CategoryApi.GetCategoryByIdApi)
+	e.POST("/category/insert", r.Handler.CategoryApi.CreateCategoryApi)
+	e.DELETE("/category/:id/delete", r.Handler.CategoryApi.DeleteCategoryApi)
+	e.PUT("/category/:id/update", r.Handler.CategoryApi.UpdateCategoryApi)
 
 	return e
 }
