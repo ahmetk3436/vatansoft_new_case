@@ -9,9 +9,10 @@ type ProductResponse struct {
 // ProductDTO represents a product data transfer object
 type ProductDTO struct {
 	ID          uint
-	Name        string     `json:"name"`
-	Price       float64    `json:"price"`
-	Quantity    int        `json:"quantity"`
-	Description string     `json:"description"`
-	Categories  []Category `json:"category" gorm:"foreignKey:CategoryID"`
+	Name        string            `json:"name"`
+	Price       float64           `json:"price"`
+	Quantity    int               `json:"quantity"`
+	Description string            `json:"description"`
+	Categories  []Category        `json:"category" gorm:"foreignKey:CategoryID"`
+	Properties  []ProductProperty `json:"properties" gorm:"many2many:product_properties"`
 }

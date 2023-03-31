@@ -10,29 +10,26 @@ import (
 // Product represents a stock item
 type Product struct {
 	gorm.Model
-	Name        string            `gorm:"not null" json:"name"`
-	Description string            `json:"description"`
-	Price       float64           `gorm:"not null" json:"price"`
-	Quantity    int               `gorm:"not null" json:"quantity"`
-	Properties  []ProductProperty `json:"properties"`
-	Categories  []Category        `gorm:"many2many:product_categories"`
+	Name        string     `gorm:"not null" json:"name"`
+	Description string     `json:"description"`
+	Price       float64    `gorm:"not null" json:"price"`
+	Quantity    int        `gorm:"not null" json:"quantity"`
+	Categories  []Category `gorm:"many2many:product_categories"`
 }
 
 // ProductProperty represents a product property
 type ProductProperty struct {
 	gorm.Model
-	Name      string  `gorm:"not null" json:"name"`
-	Value     string  `json:"value"`
-	ProductID uint    `gorm:"index"`
-	Product   Product `gorm:"foreignkey:ProductID"`
+	Name      string `gorm:"not null" json:"name"`
+	Value     string `json:"value"`
+	ProductID uint   `json:"productID"`
 }
 
 // Invoice represents a product invoice
 type Invoice struct {
 	gorm.Model
 	InvoiceNo  string  `gorm:"not null" json:"invoice_no"`
-	ProductID  uint    `gorm:"index"`
-	Product    Product `json:"product" gorm:"foreignkey:ProductID"`
+	ProductID  uint    `json:"productID"`
 	Quantity   int     `gorm:"not null" json:"quantity"`
 	TotalPrice float64 `gorm:"not null" json:"total_price"`
 }
@@ -45,6 +42,7 @@ func ToDTO(p *Product) *ProductDTO {
 		Price:       p.Price,
 		Quantity:    p.Quantity,
 		Description: p.Description,
+		Categories:  p.Categories,
 	}
 }
 

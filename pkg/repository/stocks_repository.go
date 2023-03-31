@@ -95,14 +95,47 @@ func (r *ProductRepository) FilterSearchProducts(c echo.Context, query, category
 }
 
 func (r *ProductRepository) GetAllProducts(c echo.Context) ([]*model.Product, error) {
+	// Retrieve all products from the database
 	var products []*model.Product
-	if err := r.DB.Unscoped().Table(productTable).Find(&products).Error; err != nil {
-		return nil, errors.New(err.Error())
+	if err := r.DB.Table(productTable).Unscoped().Find(&products).Error; err != nil {
+		return nil, errors.New("failed to retrieve products")
 	}
+
+	// Retrieve all product categories from the database
+	var productCategories []*model.ProductCategory
+	if err := r.DB.Table(productCategoriesTable).Find(&productCategories).Error; err != nil {
+		return nil, errors.New("failed to retrieve product categories")
+	}
+
+	// Retrieve all categories from the database
+	var categories []*model.Category
+	if err := r.DB.Table(categoryTable).Find(&categories).Error; err != nil {
+		return nil, errors.New("failed to retrieve categories")
+	}
+
+	// Create a map of product IDs to their corresponding product objects
+	productMap := make(map[uint]*model.Product)
+	for _, p := range products {
+		productMap[p.ID] = p
+	}
+	categoryMap := make(map[uint]*model.Category)
+	for _, c := range categories {
+		categoryMap[c.CategoryID] = c
+	}
+
+	for _, pc := range productCategories {
+		if product, ok := productMap[pc.ProductID]; ok {
+			if category, ok := categoryMap[pc.CategoryID]; ok {
+				product.Categories = append(product.Categories, *category)
+			}
+		}
+	}
+
+	// Check if any products were retrieved from the database
 	if len(products) == 0 {
-		return nil, errors.New("sistemde ürün bulunmamaktadır")
+		return nil, errors.New("no products found")
 	}
-	r.Redis.Set("products", products)
+
 	return products, nil
 }
 
@@ -114,12 +147,25 @@ func (r *ProductRepository) GetProductByID(c echo.Context, id string) (*model.Pr
 
 	newID, _ := strconv.Atoi(id)
 	product.ID = uint(newID)
-	marshalProduct, marshalErr := product.MarshalBinary()
-	if marshalErr != nil {
-		return nil, errors.New(marshalErr.Error())
+
+	// Retrieve all product categories from the database for this product
+	var productCategories []*model.ProductCategory
+	if err := r.DB.Table(productCategoriesTable).Where("product_id = ?", id).Find(&productCategories).Error; err != nil {
+		return nil, errors.New("failed to retrieve product categories")
 	}
-	if err := r.Redis.Set(id, marshalProduct); err != nil {
-		return nil, errors.New(err.Error())
+
+	// Retrieve all categories from the database for this product
+	var categories []*model.Category
+	categoryIDs := make([]uint, 0)
+	for _, pc := range productCategories {
+		categoryIDs = append(categoryIDs, pc.CategoryID)
+	}
+	if err := r.DB.Table(categoryTable).Where("category_id IN (?)", categoryIDs).Find(&categories).Error; err != nil {
+		return nil, errors.New("failed to retrieve categories")
+	}
+
+	for _, c := range categories {
+		product.Categories = append(product.Categories, *c)
 	}
 
 	return model.ToDTO(product), nil
@@ -166,11 +212,6 @@ func (r *ProductRepository) addCategoryToProduct(productID uint, categoryID uint
 	}
 	if err := r.DB.Table(productCategoriesTable).Save(pc).Error; err != nil {
 		return nil, errors.New("database error")
-	}
-
-	// store the product category in redis
-	if err := r.Redis.Set(strconv.Itoa(int(pc.ID)), pc).Error(); err != "" {
-		return nil, errors.New("redis error")
 	}
 
 	return pc, nil
