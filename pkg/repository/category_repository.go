@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"strconv"
 	"vatansoft/internal/storage"
 	"vatansoft/pkg/model"
@@ -26,27 +27,23 @@ func NewCategoryRepository(db *gorm.DB, redis *storage.RedisClient) *CategoryRep
 }
 func (r *CategoryRepository) CreateCategory(c echo.Context, category *model.Category) (*model.Category, error) {
 	if category.Description == "" || category.Name == "" {
-		return nil, echo.ErrBadRequest
+		return nil, errors.New("verilerde eksiklik mevcut")
 	}
-
 	if err := r.DB.Table(categoryTable).Create(&category).Error; err != nil {
-		return nil, err
+		return nil, errors.New(err.Error())
 	}
 
 	return category, nil
 }
 
 func (r *CategoryRepository) UpdateCategory(c echo.Context, id string, newCategory *model.Category) (*model.Category, error) {
-	// Create a temporary ProductDTO object to store the updated values
 	temporaryProduct := &model.Category{
-		CategoryID:  newCategory.CategoryID,
 		Name:        newCategory.Name,
 		Description: newCategory.Description,
 	}
 
-	// Update the product with the given ID in the database
-	if err := r.DB.Table(categoryTable).Where("id = ?", id).Updates(temporaryProduct).Error; err != nil {
-		return nil, err
+	if err := r.DB.Table(categoryTable).Where("category_id = ?", id).Updates(temporaryProduct).Error; err != nil {
+		return nil, errors.New(err.Error())
 	}
 
 	// Convert the updated product to a ProductResponse object and return it
@@ -54,27 +51,27 @@ func (r *CategoryRepository) UpdateCategory(c echo.Context, id string, newCatego
 }
 func (r *CategoryRepository) DeleteCategory(c echo.Context, id string) (*model.Category, error) {
 	var category model.Category
-	result := r.DB.Table(categoryTable).Where("id = ?", id).Scan(&category).Delete(&category)
+	result := r.DB.Table(categoryTable).Where("category_id = ?", id).Scan(&category).Delete(&category)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			return nil, result.Error
+			return nil, errors.New(result.Error.Error())
 		}
-		return nil, result.Error
+		return nil, errors.New(result.Error.Error())
 	}
 	return &category, nil
 }
 func (r *CategoryRepository) GetAllCategories(c echo.Context) ([]*model.Category, error) {
 	var categories []*model.Category
 	if err := r.DB.Unscoped().Table(categoryTable).Find(&categories).Error; err != nil {
-		return nil, err
+		return nil, errors.New(err.Error())
 	}
 	return categories, nil
 }
 
 func (r *CategoryRepository) GetCategoryById(c echo.Context, id string) (*model.Category, error) {
 	category := &model.Category{}
-	if err := r.DB.Table(categoryTable).Where("id = ?", id).First(category).Error; err != nil {
-		return nil, err
+	if err := r.DB.Table(categoryTable).Where("category_id = ?", id).First(category).Error; err != nil {
+		return nil, errors.New(err.Error())
 	}
 	newId, _ := strconv.Atoi(id)
 	category.CategoryID = uint(newId)

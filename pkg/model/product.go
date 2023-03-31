@@ -1,6 +1,9 @@
 package model
 
 import (
+	"bytes"
+	"encoding/gob"
+
 	"gorm.io/gorm"
 )
 
@@ -11,8 +14,8 @@ type Product struct {
 	Description string            `json:"description"`
 	Price       float64           `gorm:"not null" json:"price"`
 	Quantity    int               `gorm:"not null" json:"quantity"`
-	Categories  []Category        `json:"category" gorm:"foreignKey:CategoryID"`
 	Properties  []ProductProperty `json:"properties"`
+	Categories  []Category        `gorm:"many2many:product_categories"`
 }
 
 // ProductProperty represents a product property
@@ -70,4 +73,12 @@ func ToProduct(p *ProductDTO) *Product {
 		Quantity:    p.Quantity,
 		Description: p.Description,
 	}
+}
+func (p *Product) MarshalBinary() ([]byte, error) {
+	buf := new(bytes.Buffer)
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(p); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
