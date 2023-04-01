@@ -1,6 +1,9 @@
 package storage
 
 import (
+	"errors"
+	"time"
+
 	"github.com/go-redis/redis"
 )
 
@@ -24,20 +27,20 @@ func NewRedisClient(address, password string) (*RedisClient, error) {
 	return &RedisClient{client}, nil
 }
 
-func (rc *RedisClient) Set(key string, value interface{}) error {
-	err := rc.client.Set(key, value, 0).Err()
+func (rc *RedisClient) Set(key string, value interface{}, duration time.Duration) error {
+	err := rc.client.Set(key, value, duration*time.Minute).Err()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (rc *RedisClient) Get(key string) (string, error) {
-	val, err := rc.client.Get(key).Result()
+func (rc *RedisClient) Get(key string) ([]byte, error) {
+	val, err := rc.client.Get(key).Bytes()
 	if err == redis.Nil {
-		return "", nil
+		return nil, nil
 	} else if err != nil {
-		return "", err
+		return nil, errors.New(err.Error())
 	}
 	return val, nil
 }

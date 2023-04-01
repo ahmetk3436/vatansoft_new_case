@@ -26,7 +26,7 @@ func (r *Router) InitRouter() *echo.Echo {
 	e.GET("/stock/:id", r.Handler.Api.GetStockProductByIdApi)
 
 	e.POST("/stock/category/insert", r.Handler.Api.InsertCategoryForAllProductApi)
-	e.DELETE("/stock/:id/category/:id/delete", r.Handler.Api.DeleteCategoryForProductByIdApi)
+	e.DELETE("/stock/:id/category/:categoryId/delete", r.Handler.Api.DeleteCategoryForProductByIdApi)
 	e.DELETE("/stock/:id/category/delete", r.Handler.Api.DeleteCategoryForProductsByIdApi)
 
 	e.GET("/categories", r.Handler.CategoryApi.GetAllCategoriesApi)

@@ -42,8 +42,8 @@ func (s *StockService) DeleteStockProductService(e echo.Context, id string) (pro
 	return product, nil
 }
 
-func (s *StockService) FilterSearchStockProductService(e echo.Context, query, category, minPrice, maxPrice string) (product []*model.Product, err error) {
-	product, err = s.repository.FilterSearchProducts(e, query, category, minPrice, maxPrice)
+func (s *StockService) FilterSearchStockProductService(e echo.Context, query, category, minPrice, maxPrice, isSold, isDeleted string) (product []*model.Product, err error) {
+	product, err = s.repository.FilterSearchProducts(e, query, category, minPrice, maxPrice, isSold, isDeleted)
 	if err != nil {
 		return nil, errors.New(err.Error())
 	}
@@ -65,7 +65,7 @@ func (s *StockService) GetStockProductByIdService(e echo.Context, id string) (pr
 	}
 	return product, nil
 }
-func (s *StockService) InsertCategoryForAllProductService(e echo.Context, category model.Category) (products []*model.ProductCategory, err error) {
+func (s *StockService) InsertCategoryForAllProductService(e echo.Context, category *model.Category) (products []*model.ProductCategory, err error) {
 	products, err = s.repository.InsertCategoryForAllProducts(e, category)
 	if err != nil {
 		return nil, errors.New(err.Error())

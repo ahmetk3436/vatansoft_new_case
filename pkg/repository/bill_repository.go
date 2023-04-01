@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 	"vatansoft/internal/storage"
 	"vatansoft/pkg/model"
 
@@ -61,22 +63,45 @@ func (r *BillRepository) DeleteBill(c echo.Context, id string) (*model.Invoice, 
 		}
 		return nil, errors.New(result.Error.Error())
 	}
+	r.Redis.Delete("bill" + id)
 	return &bill, nil
 }
 func (r *BillRepository) GetAllBills(c echo.Context) ([]*model.Invoice, error) {
+	data, err := r.Redis.Get("bills")
+	var redisData []*model.Invoice
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
 	var bills []*model.Invoice
 	if err := r.DB.Unscoped().Table(billTable).Find(&bills).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
+	r.Redis.Set("bills", bills, time.Minute)
 	return bills, nil
 }
 
 func (r *BillRepository) GetBillById(c echo.Context, id string) (*model.Invoice, error) {
+	data, err := r.Redis.Get("bill" + id)
+	var redisData *model.Invoice
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
 	bill := &model.Invoice{}
 	if err := r.DB.Table(billTable).Where("id = ?", id).First(bill).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
 	newId, _ := strconv.Atoi(id)
 	bill.ID = uint(newId)
+	r.Redis.Set("bill"+id, bill, time.Minute)
 	return bill, nil
 }

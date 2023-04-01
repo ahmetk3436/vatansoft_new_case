@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -37,7 +39,7 @@ func (r *ProductRepository) CreateProduct(c echo.Context, dto *model.ProductDTO)
 		return nil, errors.New(err.Error())
 	}
 	id := strconv.Itoa(int(dto.ID))
-	r.Redis.Set(id, dto)
+	r.Redis.Set(id, dto, time.Minute)
 	return model.CreateProductResponseFromDTO(dto), nil
 }
 
@@ -49,13 +51,14 @@ func (r *ProductRepository) UpdateProduct(c echo.Context, id string, dto *model.
 		Description: dto.Description,
 		Price:       dto.Price,
 		Quantity:    dto.Quantity,
+		IsSold:      dto.IsSold,
 	}
 
 	// Update the product with the given ID in the database
 	if err := r.DB.Table(productTable).Where("id = ?", id).Updates(temporaryProduct).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
-	r.Redis.Set(id, dto)
+	r.Redis.Set(id, dto, time.Minute)
 	// Convert the updated product to a ProductResponse object and return it
 	return model.CreateProductResponseFromDTO(temporaryProduct), nil
 }
@@ -73,28 +76,66 @@ func (r *ProductRepository) DeleteProduct(c echo.Context, id string) (*model.Pro
 	return &product, nil
 }
 
-func (r *ProductRepository) FilterSearchProducts(c echo.Context, query, category, minPrice, maxPrice string) ([]*model.Product, error) {
+func (r *ProductRepository) FilterSearchProducts(c echo.Context, query, category, minPrice, maxPrice, isSold, isDeleted string) ([]*model.Product, error) {
 	db := r.DB.Table(productTable).Model(&model.Product{})
+
 	if query != "" {
 		db = db.Where("name LIKE ?", "%"+query+"%")
 	}
-	if category != "" {
-		db = db.Where("category = ?", category)
-	}
+
 	if minPrice != "" {
-		db = db.Where("unit_price >= ?", minPrice)
+		db = db.Where("price >= ?", minPrice)
 	}
+
 	if maxPrice != "" {
-		db = db.Where("unit_price <= ?", maxPrice)
+		db = db.Where("price <= ?", maxPrice)
+	}
+
+	if isSold != "" {
+
+		db = db.Where("is_sold = ?", isSold)
+	}
+
+	if isDeleted == "false" {
+		db = db.Unscoped()
+	}
+	if category != "" {
+		var productCategories []*model.ProductCategory
+		pcDB := r.DB.Table(productCategoriesTable).Where("category_id = ?", category).Find(&productCategories)
+
+		if pcDB.Error != nil {
+			return nil, errors.New("Error retrieving product categories")
+		}
+
+		var productIDs []uint
+
+		for _, pc := range productCategories {
+			productIDs = append(productIDs, pc.ProductID)
+		}
+
+		db = db.Where("id IN (?)", productIDs)
 	}
 	var products []*model.Product
-	if err := db.Table(productTable).Find(&products).Error; err != nil {
-		return nil, errors.New(err.Error())
+
+	if err := db.Find(&products).Error; err != nil {
+		return nil, errors.New("Error retrieving products")
 	}
+
 	return products, nil
 }
 
 func (r *ProductRepository) GetAllProducts(c echo.Context) ([]*model.Product, error) {
+	data, err := r.Redis.Get("products")
+	var redisData []*model.Product
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
+
 	// Retrieve all products from the database
 	var products []*model.Product
 	if err := r.DB.Table(productTable).Unscoped().Find(&products).Error; err != nil {
@@ -135,11 +176,21 @@ func (r *ProductRepository) GetAllProducts(c echo.Context) ([]*model.Product, er
 	if len(products) == 0 {
 		return nil, errors.New("no products found")
 	}
-
+	r.Redis.Set("products", products, time.Minute)
 	return products, nil
 }
 
 func (r *ProductRepository) GetProductByID(c echo.Context, id string) (*model.ProductDTO, error) {
+	data, err := r.Redis.Get("id")
+	var redisData *model.ProductDTO
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
 	product := &model.Product{}
 	if err := r.DB.Table(productTable).Where("id = ?", id).First(product).Error; err != nil {
 		return nil, errors.New(err.Error())
@@ -167,13 +218,13 @@ func (r *ProductRepository) GetProductByID(c echo.Context, id string) (*model.Pr
 	for _, c := range categories {
 		product.Categories = append(product.Categories, *c)
 	}
-
+	r.Redis.Set(id, model.ToDTO(product), time.Minute)
 	return model.ToDTO(product), nil
 }
 
-func (r *ProductRepository) InsertCategoryForAllProducts(c echo.Context, category model.Category) ([]*model.ProductCategory, error) {
+func (r *ProductRepository) InsertCategoryForAllProducts(c echo.Context, category *model.Category) ([]*model.ProductCategory, error) {
 	// check if category exists
-	if err := r.DB.Table(categoryTable).Find(&category).Error; err != nil {
+	if err := r.DB.Table(categoryTable).Where("name = ?", category.Name).FirstOrCreate(&category).Error; err != nil {
 		if err != nil {
 			return nil, errors.New("category not found")
 		}
@@ -206,15 +257,23 @@ func (r *ProductRepository) getAllProducts() ([]model.Product, error) {
 }
 
 func (r *ProductRepository) addCategoryToProduct(productID uint, categoryID uint) (*model.ProductCategory, error) {
-	pc := &model.ProductCategory{
+	// Check if the product category already exists
+	var pc model.ProductCategory
+	if err := r.DB.Table(productCategoriesTable).Where("product_id = ? AND category_id = ?", productID, categoryID).First(&pc).Error; err == nil {
+		// Product category already exists, return without creating a new one
+		return &pc, nil
+	}
+
+	// Product category does not exist, create a new one
+	pc = model.ProductCategory{
 		ProductID:  productID,
 		CategoryID: categoryID,
 	}
-	if err := r.DB.Table(productCategoriesTable).Save(pc).Error; err != nil {
+	if err := r.DB.Table(productCategoriesTable).Create(&pc).Error; err != nil {
 		return nil, errors.New("database error")
 	}
 
-	return pc, nil
+	return &pc, nil
 }
 
 func (r *ProductRepository) DeleteCategoryForProductByID(c echo.Context, id, categoryID string) (*model.ProductCategory, error) {

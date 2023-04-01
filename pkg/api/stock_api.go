@@ -87,10 +87,11 @@ func (a *Api) DeleteStockProductApi(e echo.Context) error {
 func (a *Api) FilterSearchStockProductApi(e echo.Context) error {
 	q := e.QueryParam("query")
 	category := e.QueryParam("category")
-	sortBy := e.QueryParam("minPrice")
-	sortOrder := e.QueryParam("maxPrice")
-
-	product, err := a.stockService.FilterSearchStockProductService(e, q, category, sortBy, sortOrder)
+	minPrice := e.QueryParam("minPrice")
+	maxPrice := e.QueryParam("maxPrice")
+	isSold := e.QueryParam("sold")
+	isDeleted := e.QueryParam("deleted")
+	product, err := a.stockService.FilterSearchStockProductService(e, q, category, minPrice, maxPrice, isSold, isDeleted)
 	if err != nil {
 		storage.ConnectMongoSaveLog(err.Error(), e)
 		return e.JSON(http.StatusOK, map[string]string{"message": err.Error()})
@@ -119,19 +120,27 @@ func (a *Api) GetStockProductByIdApi(e echo.Context) error {
 }
 
 func (a *Api) InsertCategoryForAllProductApi(e echo.Context) error {
-	var category model.Category
-	if err := e.Bind(&category); err != nil {
+	const contentType = "application/json"
+	if e.Request().Header.Get("Content-Type") != contentType {
+		msg := "JSON data is required"
+		storage.ConnectMongoSaveLog(msg, e)
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": msg})
+	}
+
+	category := new(model.Category)
+	if err := e.Bind(category); err != nil {
 		storage.ConnectMongoSaveLog(err.Error(), e)
 		return e.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-
 	product, err := a.stockService.InsertCategoryForAllProductService(e, category)
 	if err != nil {
 		storage.ConnectMongoSaveLog(err.Error(), e)
 		return e.JSON(http.StatusOK, map[string]string{"message": err.Error()})
 	}
+
 	return e.JSON(http.StatusOK, product)
 }
+
 func (a *Api) DeleteCategoryForProductByIdApi(e echo.Context) error {
 	id := e.Param("id")
 	categoryId := e.Param("categoryId")

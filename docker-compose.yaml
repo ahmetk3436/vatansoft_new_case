@@ -16,7 +16,7 @@ services:
     networks:
       - mongors-network
     ports: 
-      - 5555:5555
+      - 1323:1323
     environment:
       - MONGO_HOST=mongo1
       - MONGO_DB=logdb    

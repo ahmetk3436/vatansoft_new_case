@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 	"vatansoft/internal/storage"
 	"vatansoft/pkg/model"
 
@@ -45,7 +47,7 @@ func (r *CategoryRepository) UpdateCategory(c echo.Context, id string, newCatego
 	if err := r.DB.Table(categoryTable).Where("category_id = ?", id).Updates(temporaryProduct).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
-
+	r.Redis.Set("category"+id, newCategory, time.Minute)
 	// Convert the updated product to a ProductResponse object and return it
 	return newCategory, nil
 }
@@ -58,22 +60,45 @@ func (r *CategoryRepository) DeleteCategory(c echo.Context, id string) (*model.C
 		}
 		return nil, errors.New(result.Error.Error())
 	}
+	r.Redis.Delete("category" + id)
 	return &category, nil
 }
 func (r *CategoryRepository) GetAllCategories(c echo.Context) ([]*model.Category, error) {
+	data, err := r.Redis.Get("categories")
+	var redisData []*model.Category
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
 	var categories []*model.Category
 	if err := r.DB.Unscoped().Table(categoryTable).Find(&categories).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
+	r.Redis.Set("categories", categories, time.Minute)
 	return categories, nil
 }
 
 func (r *CategoryRepository) GetCategoryById(c echo.Context, id string) (*model.Category, error) {
+	data, err := r.Redis.Get("category" + id)
+	var redisData *model.Category
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
 	category := &model.Category{}
 	if err := r.DB.Table(categoryTable).Where("category_id = ?", id).First(category).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
 	newId, _ := strconv.Atoi(id)
 	category.CategoryID = uint(newId)
+	r.Redis.Set("category"+id, category, time.Minute)
 	return category, nil
 }

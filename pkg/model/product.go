@@ -15,6 +15,7 @@ type Product struct {
 	Price       float64    `gorm:"not null" json:"price"`
 	Quantity    int        `gorm:"not null" json:"quantity"`
 	Categories  []Category `gorm:"many2many:product_categories"`
+	IsSold      string     `json:"sold"`
 }
 
 // ProductProperty represents a product property

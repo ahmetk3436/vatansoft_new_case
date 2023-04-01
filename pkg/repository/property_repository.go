@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
+	"time"
 	"vatansoft/internal/storage"
 	"vatansoft/pkg/model"
 
@@ -32,11 +34,11 @@ func (r *PropertyRepository) CreateProperty(c echo.Context, Property *model.Prod
 	if err := r.DB.Table(PropertyTable).Create(&Property).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
-
 	return Property, nil
 }
 
 func (r *PropertyRepository) UpdateProperty(c echo.Context, id string, newProperty *model.ProductProperty) (*model.ProductProperty, error) {
+
 	temporaryProduct := &model.ProductProperty{
 		Model:     newProperty.Model,
 		Name:      newProperty.Name,
@@ -47,7 +49,7 @@ func (r *PropertyRepository) UpdateProperty(c echo.Context, id string, newProper
 	if err := r.DB.Table(PropertyTable).Where("id = ?", id).Updates(temporaryProduct).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
-
+	r.Redis.Set("property"+id, newProperty, time.Minute)
 	// Convert the updated product to a ProductResponse object and return it
 	return newProperty, nil
 }
@@ -60,9 +62,20 @@ func (r *PropertyRepository) DeleteProperty(c echo.Context, id string) (*model.P
 		}
 		return nil, errors.New(result.Error.Error())
 	}
+	r.Redis.Delete("property" + id)
 	return &Property, nil
 }
 func (r *PropertyRepository) GetAllPropertys(c echo.Context) ([]*model.ProductProperty, error) {
+	data, err := r.Redis.Get("propertys")
+	var redisData []*model.ProductProperty
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
 	var Propertys []*model.ProductProperty
 	if err := r.DB.Unscoped().Table(PropertyTable).Find(&Propertys).Error; err != nil {
 		return nil, errors.New(err.Error())
@@ -70,15 +83,27 @@ func (r *PropertyRepository) GetAllPropertys(c echo.Context) ([]*model.ProductPr
 	if len(Propertys) == 0 {
 		return nil, errors.New("sistemde ürün özelliği bulunmamaktadır")
 	}
+	r.Redis.Set("propertys", Propertys, time.Minute)
 	return Propertys, nil
 }
 
 func (r *PropertyRepository) GetPropertyById(c echo.Context, id string) (*model.ProductProperty, error) {
+	data, err := r.Redis.Get("property" + id)
+	var redisData *model.ProductProperty
+	if err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &redisData); err != nil {
+				return nil, err
+			}
+			return redisData, nil
+		}
+	}
 	Property := &model.ProductProperty{}
 	if err := r.DB.Table(PropertyTable).Where("id = ?", id).First(Property).Error; err != nil {
 		return nil, errors.New(err.Error())
 	}
 	newId, _ := strconv.Atoi(id)
 	Property.ID = uint(newId)
+	r.Redis.Set("property"+id, Property, time.Minute)
 	return Property, nil
 }
