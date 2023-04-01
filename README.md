@@ -16,6 +16,8 @@ Proje içinde bu layout kullanılmıştır => https://github.com/golang-standard
 
 Proje'de hata yönetimi olarak her katmanda ERRORS paketi kullanılmıştır , belirli bir formatta çıktı sağlanmıştır.
 
+MongoDB'de logdb altında logs koleksiyonunda loglar tutuldu. Loglar id, log mesajı , ip adres ve remote adres bilgilerini içinde tutuyor.
+
 Bütün API endpointlerinin nasıl kullanılacağını görmek ve test etmek için POSTMAN üzerinden bakabilirsiniz :
 
 https://elements.getpostman.com/redirect?entityId=14030852-4128ba3c-e10f-45ef-a5e1-f7394545dd1d&entityType=collection
