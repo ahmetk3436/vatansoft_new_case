@@ -2,13 +2,6 @@
 Bu case'de stok için ürünün CRUD işlemlerini , filtreleme , kategori ekleme , bütün ürünleri getirme gibi özellikler barındırır. Bunun yanı sıra fatura , ürün özellikleri ve kategoriler içinde CRUD işlemlerini barındırır.
 
 Projede redis (cache) , mongodb(log) , mysql(veritabanı işlemleri) teknolojileri kullanıldı. Proje http://45.12.81.218/ adresinde 1323 portunun üzerinde bir sunucuda çalışmaktadır.
-Sunucuya bağlanıp vatansoft klasörü altında dosyalara erişebilirsiniz :
-
-machine host: http://45.12.81.218/
-
-machine user: root
-
-machine pass: mgcHSiXlOKaNd0rx!diyo@
 
 Projeyi kendi bilgisayarınızda çalıştırmak için cmd klasörünün altındaki main.go dosyasını çalıştırabilirsiniz, proje uzak sunucudaki REDİS,MONGODB VE MYSQL'e bağlanacak şekilde ayarlanmıştır.
 
